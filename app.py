@@ -45,7 +45,7 @@ TOKEN_URL = 'https://api.x.com/2/oauth2/token'
 USERINFO_URL = 'https://api.x.com/2/users/me'
 
 # Scopes needed for the application
-SCOPES = ['tweet.read', 'users.read']
+SCOPES = ['tweet.read', 'users.read', 'offline.access']
 
 
 @app.route('/')
