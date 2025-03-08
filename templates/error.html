@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Authentication Error{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card border-danger">
+            <div class="card-header border-danger">
+                <h2 class="h4 mb-0 text-danger">Authentication Error</h2>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-danger border-0 mb-4">
+                    <h4 class="mb-3"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i> Error Details</h4>
+                    <p class="mb-0">{{ error }}</p>
+                </div>
+                <p>There was a problem authenticating with X. Please try again or contact support if the issue persists.</p>
+                <p class="text-muted mb-2">Common issues include:</p>
+                <ul class="text-muted">
+                    <li>Invalid callback URL configuration</li>
+                    <li>Missing or incorrect API credentials</li>
+                    <li>Authentication flow was interrupted</li>
+                    <li>X API service interruption</li>
+                </ul>
+            </div>
+            <div class="card-footer border-top">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="bi bi-arrow-left me-1"></i> Return to Home
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}GitHub Trending{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Trending GitHub Repositories</h1>
+<p class="lead">Top repositories by star count</p>
+
+<div class="row mt-4">
+    {% for repo in repos %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <img src="{{ repo.owner.avatar_url }}" alt="{{ repo.owner.login }}" class="rounded-circle me-2" style="width: 40px; height: 40px;">
+                    <h5 class="card-title mb-0">{{ repo.name }}</h5>
+                </div>
+                <p class="text-muted">
+                    <a href="{{ repo.owner.html_url }}" target="_blank" class="text-decoration-none">@{{ repo.owner.login }}</a>
+                </p>
+                <p class="card-text">{{ repo.description or 'No description available' }}</p>
+                <div class="d-flex justify-content-between">
+                    <span class="badge bg-primary rounded-pill">⭐ {{ repo.stargazers_count }}</span>
+                    <span class="badge bg-secondary rounded-pill">🍴 {{ repo.forks_count }}</span>
+                    <span class="badge bg-info rounded-pill">👁️ {{ repo.watchers_count }}</span>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{{ repo.html_url }}" target="_blank" class="btn btn-outline-primary btn-sm">View Repository</a>
+                {% if repo.homepage %}
+                <a href="{{ repo.homepage }}" target="_blank" class="btn btn-outline-secondary btn-sm">Project Website</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %} 
