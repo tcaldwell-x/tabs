@@ -4,6 +4,8 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from requests_oauthlib import OAuth2Session
 from dotenv import load_dotenv
 import secrets
+import base64
+import hashlib
 
 # Load environment variables
 load_dotenv()
@@ -47,6 +49,16 @@ USERINFO_URL = 'https://api.x.com/2/users/me'
 # Scopes needed for the application
 SCOPES = ['tweet.read', 'users.read', 'offline.access']
 
+# Helper function to generate a code verifier for PKCE
+def generate_code_verifier(length=64):
+    """Generate a code verifier string of specified length for PKCE"""
+    return secrets.token_urlsafe(length)
+
+# Helper function to generate a code challenge from a code verifier
+def generate_code_challenge(code_verifier):
+    """Generate a code challenge (S256) from a code verifier"""
+    sha256 = hashlib.sha256(code_verifier.encode('utf-8')).digest()
+    return base64.urlsafe_b64encode(sha256).decode('utf-8').rstrip('=')
 
 @app.route('/')
 def index():
@@ -56,7 +68,15 @@ def index():
 
 @app.route('/login')
 def login():
-    """Redirect to X authorization page"""
+    """Redirect to X authorization page with PKCE"""
+    # Generate code verifier and challenge for PKCE
+    code_verifier = generate_code_verifier()
+    code_challenge = generate_code_challenge(code_verifier)
+    
+    # Store the verifier in session for later use in callback
+    session['code_verifier'] = code_verifier
+    
+    # Create OAuth session
     x_session = OAuth2Session(
         X_CLIENT_ID,
         redirect_uri=X_REDIRECT_URI,
@@ -66,6 +86,7 @@ def login():
     # Create the authorization URL with PKCE
     authorization_url, state = x_session.authorization_url(
         AUTHORIZATION_BASE_URL,
+        code_challenge=code_challenge,
         code_challenge_method='S256'
     )
     
@@ -78,8 +99,9 @@ def login():
 @app.route('/callback')
 def callback():
     """Process the X OAuth 2.0 callback"""
-    # Get the state from the session
+    # Get the state and code verifier from the session
     state = session.get('oauth_state', None)
+    code_verifier = session.get('code_verifier', None)
     
     # Create the OAuth session
     x_session = OAuth2Session(
@@ -96,11 +118,12 @@ def callback():
         else:
             auth_response_url = request.url
             
-        # Fetch the access token using the authorization code
+        # Fetch the access token using the authorization code and code verifier
         token = x_session.fetch_token(
             TOKEN_URL,
             client_secret=X_CLIENT_SECRET,
-            authorization_response=auth_response_url
+            authorization_response=auth_response_url,
+            code_verifier=code_verifier
         )
         
         # Store the token in the session
