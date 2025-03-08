@@ -37,10 +37,7 @@ X_CLIENT_ID = os.getenv('X_CLIENT_ID')
 X_CLIENT_SECRET = os.getenv('X_CLIENT_SECRET')
 
 # Get the appropriate redirect URI based on environment
-if os.getenv('VERCEL_URL'):
-    # Vercel deployment
-    X_REDIRECT_URI = f"https://{os.getenv('VERCEL_URL')}/callback"
-elif os.getenv('X_REDIRECT_URI'):
+if os.getenv('X_REDIRECT_URI'):
     # Custom configured redirect URI
     X_REDIRECT_URI = os.getenv('X_REDIRECT_URI')
 else:
