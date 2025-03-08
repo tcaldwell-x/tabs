@@ -58,6 +58,7 @@ body {
     color: #e7e9ea;
     border-color: #2f3336;
     border-radius: 9999px;
+    padding: 0.65rem 1.2rem;
 }
 
 .btn-outline-dark:hover {
@@ -129,4 +130,14 @@ footer {
 /* Custom container background for dark theme */
 .container.mt-4 {
     background-color: #000000;
+}
+
+/* Specific style for the View Profile button with X logo */
+.btn-outline-dark.btn-sm {
+    padding: 0.5rem 1.25rem;
+}
+
+/* Add more padding when the button contains the X logo SVG */
+.btn-outline-dark .bi-x-logo {
+    margin-right: 0.6rem;
 } 
