@@ -90,6 +90,13 @@ def login():
         code_challenge_method='S256'
     )
     
+    # Debug prints
+    print(f"Code Verifier: {code_verifier}")
+    print(f"Code Challenge: {code_challenge}")
+    print(f"Authorization URL: {authorization_url}")
+    print(f"State: {state}")
+    print(f"Redirect URI: {X_REDIRECT_URI}")
+    
     # Store the state for later use
     session['oauth_state'] = state
     
@@ -102,6 +109,18 @@ def callback():
     # Get the state and code verifier from the session
     state = session.get('oauth_state', None)
     code_verifier = session.get('code_verifier', None)
+    
+    # Debug prints
+    print(f"Callback received")
+    print(f"State from session: {state}")
+    print(f"Code verifier from session: {code_verifier}")
+    print(f"Request URL: {request.url}")
+    
+    # Check if state or code_verifier is None
+    if not state:
+        return render_template('error.html', error="State is missing from session. Session may have expired.")
+    if not code_verifier:
+        return render_template('error.html', error="Code verifier is missing from session. Session may have expired.")
     
     # Create the OAuth session
     x_session = OAuth2Session(
@@ -117,6 +136,8 @@ def callback():
             auth_response_url = request.url.replace('http://', 'https://', 1)
         else:
             auth_response_url = request.url
+        
+        print(f"Auth response URL: {auth_response_url}")
             
         # Fetch the access token using the authorization code and code verifier
         token = x_session.fetch_token(
@@ -136,6 +157,10 @@ def callback():
         return redirect(url_for('profile'))
     
     except Exception as e:
+        print(f"Error in callback: {str(e)}")
+        print(f"Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
         return render_template('error.html', error=str(e))
 
 
@@ -175,6 +200,68 @@ def logout():
     """Log the user out by clearing the session"""
     session.clear()
     return redirect(url_for('index'))
+
+
+@app.route('/debug')
+def debug_twitter():
+    """Debug page for Twitter OAuth configuration"""
+    # Create a debug info dictionary
+    debug_info = {
+        "client_id": X_CLIENT_ID,
+        "redirect_uri": X_REDIRECT_URI,
+        "scopes": SCOPES,
+        "auth_url": AUTHORIZATION_BASE_URL,
+        "token_url": TOKEN_URL,
+        "vercel_url": os.getenv('VERCEL_URL'),
+        "x_redirect_uri_env": os.getenv('X_REDIRECT_URI')
+    }
+    
+    # Generate a test code verifier and challenge (without storing in session)
+    test_verifier = generate_code_verifier()
+    test_challenge = generate_code_challenge(test_verifier)
+    
+    # Create a test authorization URL
+    test_session = OAuth2Session(
+        X_CLIENT_ID,
+        redirect_uri=X_REDIRECT_URI,
+        scope=SCOPES
+    )
+    
+    test_auth_url, test_state = test_session.authorization_url(
+        AUTHORIZATION_BASE_URL,
+        code_challenge=test_challenge,
+        code_challenge_method='S256'
+    )
+    
+    # Add test values to debug info
+    debug_info["test_verifier"] = test_verifier
+    debug_info["test_challenge"] = test_challenge
+    debug_info["test_auth_url"] = test_auth_url
+    debug_info["test_state"] = test_state
+    
+    # Check for common configuration issues
+    issues = []
+    
+    if not X_CLIENT_ID:
+        issues.append("X_CLIENT_ID is not set")
+    
+    if not X_CLIENT_SECRET:
+        issues.append("X_CLIENT_SECRET is not set")
+    
+    if not X_REDIRECT_URI:
+        issues.append("X_REDIRECT_URI is not configured")
+    
+    if X_REDIRECT_URI and "localhost" in X_REDIRECT_URI:
+        issues.append("Redirect URI contains 'localhost' which Twitter might not accept. Use 127.0.0.1 instead.")
+    
+    # For Vercel deployments
+    if os.getenv('VERCEL_URL') and not X_REDIRECT_URI.startswith(f"https://{os.getenv('VERCEL_URL')}"):
+        issues.append(f"Redirect URI doesn't match Vercel URL. Expected: https://{os.getenv('VERCEL_URL')}/callback")
+    
+    debug_info["issues"] = issues
+    debug_info["session_cookie_secure"] = app.config.get('SESSION_COOKIE_SECURE', False)
+    
+    return render_template('debug.html', debug=debug_info)
 
 
 if __name__ == '__main__':
