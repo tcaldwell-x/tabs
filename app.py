@@ -15,8 +15,14 @@ app = Flask(__name__)
 
 # Configure session
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(16))
-app.config['SESSION_TYPE'] = 'filesystem'
-app.config['SESSION_PERMANENT'] = False
+# Using cookies instead of filesystem for serverless compatibility 
+# app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = True  # Set to True for cookie-based sessions
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('VERCEL_ENV') == 'production'  # HTTPS only in production
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minutes
 
 # For production environments like Vercel, ensure HTTPS is used for callbacks
 if os.getenv('VERCEL_ENV') == 'production':
@@ -76,6 +82,10 @@ def login():
     # Store the verifier in session for later use in callback
     session['code_verifier'] = code_verifier
     
+    # Create a combined state that includes the verifier
+    # This is a backup in case sessions don't work
+    combined_state = f"{secrets.token_urlsafe(16)}:{code_verifier}"
+    
     # Create OAuth session
     x_session = OAuth2Session(
         X_CLIENT_ID,
@@ -87,18 +97,19 @@ def login():
     authorization_url, state = x_session.authorization_url(
         AUTHORIZATION_BASE_URL,
         code_challenge=code_challenge,
-        code_challenge_method='S256'
+        code_challenge_method='S256',
+        state=combined_state  # Use our combined state
     )
     
     # Debug prints
     print(f"Code Verifier: {code_verifier}")
     print(f"Code Challenge: {code_challenge}")
     print(f"Authorization URL: {authorization_url}")
-    print(f"State: {state}")
+    print(f"Combined State: {combined_state}")
     print(f"Redirect URI: {X_REDIRECT_URI}")
     
     # Store the state for later use
-    session['oauth_state'] = state
+    session['oauth_state'] = combined_state
     
     return redirect(authorization_url)
 
@@ -106,27 +117,45 @@ def login():
 @app.route('/callback')
 def callback():
     """Process the X OAuth 2.0 callback"""
-    # Get the state and code verifier from the session
-    state = session.get('oauth_state', None)
-    code_verifier = session.get('code_verifier', None)
+    # Get request params
+    request_state = request.args.get('state')
+    
+    # Try to get state and code verifier from the session
+    session_state = session.get('oauth_state')
+    code_verifier = session.get('code_verifier')
     
     # Debug prints
     print(f"Callback received")
-    print(f"State from session: {state}")
+    print(f"State from request: {request_state}")
+    print(f"State from session: {session_state}")
     print(f"Code verifier from session: {code_verifier}")
     print(f"Request URL: {request.url}")
     
-    # Check if state or code_verifier is None
-    if not state:
+    # If session state is missing but request state is present
+    if not session_state and request_state:
+        # We'll use the state from the request, which should include the code_verifier
+        print("Session state missing, using request state")
+        session_state = request_state
+        
+        # Try to extract code_verifier from state
+        if ':' in request_state:
+            # Our state format is "random:code_verifier"
+            state_parts = request_state.split(':', 1)
+            if len(state_parts) == 2:
+                code_verifier = state_parts[1]
+                print(f"Extracted code_verifier from state: {code_verifier}")
+    
+    # If state or code_verifier is still None, return error
+    if not session_state:
         return render_template('error.html', error="State is missing from session. Session may have expired.")
     if not code_verifier:
-        return render_template('error.html', error="Code verifier is missing from session. Session may have expired.")
+        return render_template('error.html', error="Code verifier is missing. Session may have expired.")
     
-    # Create the OAuth session
+    # Create the OAuth session with state
     x_session = OAuth2Session(
         X_CLIENT_ID,
         redirect_uri=X_REDIRECT_URI,
-        state=state
+        state=session_state
     )
     
     try:
