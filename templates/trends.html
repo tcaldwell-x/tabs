@@ -3,6 +3,9 @@
 {% block title %}Personalized Trends{% endblock %}
 
 {% block content %}
+<!-- Define a list of available colors instead of mapping to specific categories -->
+{% set available_colors = ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'purple', 'teal', 'pink', 'green', 'indigo', 'orange', 'brown', 'cyan', 'bitcoin'] %}
+
 <div class="row mb-5">
     <div class="col-12">
         <div class="d-flex justify-content-center align-items-center mb-4">
@@ -43,8 +46,12 @@
                                             <p class="mb-0">{{ trend.message }}</p>
                                         </div>
                                     {% else %}
+                                        <!-- Dynamically assign color based on category string -->
+                                        {% set color_index = trend.category|length % available_colors|length %}
+                                        {% set badge_color = available_colors[color_index] %}
+                                        
                                         <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <span class="badge bg-primary">{{ trend.category }}</span>
+                                            <span class="badge bg-{{ badge_color }} category-badge">{{ trend.category }}</span>
                                             <small class="text-muted">{{ trend.trending_since }}</small>
                                         </div>
                                         <h5 class="mb-2 trend-title">{{ trend.trend_name }}</h5>
@@ -114,6 +121,49 @@
     font-size: 0.8rem;
 }
 
+/* Category badge colors */
+.bg-purple {
+    background-color: #6f42c1;
+}
+
+.bg-teal {
+    background-color: #20c997;
+}
+
+.bg-pink {
+    background-color: #e83e8c;
+}
+
+.bg-green {
+    background-color: #28a745;
+}
+
+.bg-indigo {
+    background-color: #6610f2;
+}
+
+.bg-orange {
+    background-color: #fd7e14;
+}
+
+.bg-brown {
+    background-color: #856404;
+}
+
+.bg-cyan {
+    background-color: #17a2b8;
+}
+
+.bg-yellow {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.bg-bitcoin {
+    background-color: #f7931a;
+    color: #212529;
+}
+
 /* Responsive adjustments for small screens */
 @media (max-width: 576px) {
     .card-header .d-flex {
@@ -125,6 +175,11 @@
         margin-top: 1rem;
         align-self: flex-end;
     }
+}
+
+.category-badge {
+    padding: 0.35em 0.65em;
+    border-radius: 0.85rem;
 }
 </style>
 {% endblock %} 
