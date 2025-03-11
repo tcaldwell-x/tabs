@@ -6,6 +6,21 @@
 <!-- Define a list of available colors instead of mapping to specific categories -->
 {% set available_colors = ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'purple', 'teal', 'pink', 'green', 'indigo', 'orange', 'brown', 'cyan', 'bitcoin'] %}
 
+<!-- First, get all unique categories from trends -->
+{% set unique_categories = [] %}
+{% for trend in trends %}
+    {% if trend.category not in unique_categories and not trend.get('error') %}
+        {% set _ = unique_categories.append(trend.category) %}
+    {% endif %}
+{% endfor %}
+
+<!-- Create a mapping of categories to colors -->
+{% set category_color_map = {} %}
+{% for category in unique_categories %}
+    {% set color_index = loop.index0 % available_colors|length %}
+    {% set _ = category_color_map.update({category: available_colors[color_index]}) %}
+{% endfor %}
+
 <div class="row mb-5">
     <div class="col-12">
         <div class="d-flex justify-content-center align-items-center mb-4">
@@ -46,9 +61,7 @@
                                             <p class="mb-0">{{ trend.message }}</p>
                                         </div>
                                     {% else %}
-                                        <!-- Dynamically assign color based on category string -->
-                                        {% set color_index = trend.category|length % available_colors|length %}
-                                        {% set badge_color = available_colors[color_index] %}
+                                        {% set badge_color = category_color_map.get(trend.category, 'primary') %}
                                         
                                         <div class="d-flex justify-content-between align-items-start mb-2">
                                             <span class="badge bg-{{ badge_color }} category-badge">{{ trend.category }}</span>
