@@ -180,7 +180,8 @@ def callback():
         user_info = fetch_user_info(token)
         session['user_info'] = user_info
         
-        return redirect(url_for('profile'))
+        # Redirect to trends page instead of profile
+        return redirect(url_for('trends'))
     
     except Exception as e:
         print(f"Error in callback: {str(e)}")
@@ -209,6 +210,74 @@ def fetch_user_info(token):
         return {'error': f"Error fetching user info: {response.status_code}"}
 
 
+def fetch_personalized_trends(token):
+    """Fetch the user's personalized trends from X API"""
+    x_session = OAuth2Session(X_CLIENT_ID, token=token)
+    
+    # The personalized trends endpoint
+    trends_url = 'https://api.twitter.com/2/users/personalized_trends'
+    
+    try:
+        # Make the request to the personalized trends endpoint
+        response = x_session.get(trends_url)
+        
+        print(f"Trends API Response Status: {response.status_code}")
+        print(f"Trends API Response Headers: {response.headers}")
+        
+        if response.status_code == 200:
+            return response.json()
+        elif response.status_code == 403:
+            # User might not have premium subscription
+            return {
+                'data': [
+                    {
+                        'error': True,
+                        'message': 'Access to personalized trends requires X Premium',
+                        'category': 'Subscription Required',
+                        'trend_name': 'X Premium Required',
+                        'post_count': '',
+                        'trending_since': ''
+                    }
+                ]
+            }
+        else:
+            # Handle other errors
+            error_msg = f"Error fetching trends: {response.status_code}"
+            try:
+                error_data = response.json()
+                if 'errors' in error_data and error_data['errors']:
+                    error_msg = error_data['errors'][0].get('message', error_msg)
+            except:
+                pass
+                
+            return {
+                'data': [
+                    {
+                        'error': True,
+                        'message': error_msg,
+                        'category': 'Error',
+                        'trend_name': 'Could not fetch trends',
+                        'post_count': '',
+                        'trending_since': ''
+                    }
+                ]
+            }
+    except Exception as e:
+        print(f"Exception fetching trends: {str(e)}")
+        return {
+            'data': [
+                {
+                    'error': True,
+                    'message': str(e),
+                    'category': 'Error',
+                    'trend_name': 'Could not fetch trends',
+                    'post_count': '',
+                    'trending_since': ''
+                }
+            ]
+        }
+
+
 @app.route('/profile')
 def profile():
     """Display the user's profile information"""
@@ -219,6 +288,24 @@ def profile():
         return redirect(url_for('index'))
     
     return render_template('profile.html', user=user_info['data'])
+
+
+@app.route('/trends')
+def trends():
+    """Display the user's personalized trends"""
+    # Check if the user is logged in
+    token = session.get('oauth_token')
+    user_info = session.get('user_info')
+    
+    if not token or not user_info:
+        return redirect(url_for('index'))
+    
+    # Fetch personalized trends
+    trends_data = fetch_personalized_trends(token)
+    
+    return render_template('trends.html', 
+                          trends=trends_data.get('data', []), 
+                          user=user_info['data'])
 
 
 @app.route('/logout')
